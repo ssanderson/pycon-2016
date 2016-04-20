@@ -1,0 +1,6 @@
+[submodule "codetransformer"]
+	path = codetransformer
+	url = git@github.com:llllllllll/codetransformer.git
+[submodule "RISE"]
+	path = RISE
+	url = git@github.com:damianavila/RISE.git

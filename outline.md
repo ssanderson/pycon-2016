@@ -1,6 +1,6 @@
 How Does Python Execute Anything?
 ---------------------------------
-(3 minutes)
+(3 minutes; running total=3)
 
 In this section, we provide an introduction to the `code` type.  In particular,
 we draw attention to it's `co_code` attribute, which contains the actual
@@ -15,7 +15,7 @@ instructions executed by the interpreter.
 
 Intro to Bytecode
 -----------------
-(7 minutes)
+(7 minutes; running total=10)
 
 In this section we walk through a sequence of simple Python functions, showing
 the disassembly of each and walking through the state of the CPython Virtual
@@ -26,17 +26,18 @@ Important classes of instructions are `LOAD`s, `STORE`s, `JUMP`s, and `BINARY`
 operators.
 
 **First Example:**
+(3 minutes)
 
 Should teach the audience what the stack is, showing that values get pushed
-onto and popped from the stack.
+onto and popped from the stack.  This section explains the basics of how to
+read the output of the disassembly module.
 
 Source:
 
     def add(a, b):
-        a + b
+        return a + b
 
 Disassembly:
-
 
     3           0 LOAD_FAST                0 (a)
                 3 LOAD_FAST                1 (b)
@@ -44,8 +45,10 @@ Disassembly:
                 7 RETURN_VALUE
 
 **Second Example:**
+(1 minute)
 
-Should teach the audience what a store looks like.
+Should teach the audience what a store looks like. This is intended to create
+the simplest possible contrast with the previous example.
 
 Source:
 
@@ -64,6 +67,7 @@ Disassembly:
                13 RETURN_VALUE
 
 **Third Example:**
+(3 minutes)
 
 Should teach the audience what a jump looks like, and introduces the
 distinction between variables and constants.  This is foreshadowing two of the
@@ -96,7 +100,11 @@ Disassembly:
 
 Building a Code Object From Scratch
 -----------------------------------
-(10 minutes)
+(10 minutes; running total=20)
+
+In this section, we walk through the creation of a code object from scratch.
+We give a short (~30-60 seconds each) treatment of each argument to `CodeType`,
+culminating in the creation of full code object from scratch.
 
 Python functions are objects just like anything else in Python.  This means
 they must be instances of some type.  What would it take to build a function
@@ -120,6 +128,8 @@ What do we need to pass to CodeType?
     Create a code object.  Not for the faint of heart.
     Type:      type
 
+"Not for the faint of heart.  Great!"
+
 The disassembly for our desired function:
 
     3           0 LOAD_FAST                0 (x)
@@ -137,31 +147,38 @@ This is easier to read interpreting the bytes as ints:
     >>> list(addone.__code__.co_code)
     [124, 0, 0, 100, 1, 0, 23, 83]
 
-Each instruction is a single unsigned byte.  For instructions that take
-arguments, two bytes are used for the argument.
+Each instruction is a single unsigned byte.  Some instructions accept
+arguments, which modify the behavior of the instruction.  For example, `LOAD`
+instructions take an argument describing where to find the value to be
+loaded. For instructions that take arguments, the two bytes after the opcode
+are used to describe the argument.
 
-- `124` is the opcode for `LOAD_FAST`.  The next two values are two bytes
-  representing the argument to `LOAD_FAST`, which is the index into the fast
-  (aka local) variable storage, interpreted as a little-endian 2-byte integer.
+- `124, 0, 0`: `124` is the opcode for `LOAD_FAST`.  The next two bytes
+  represent the argument to `LOAD_FAST`, which is an index into the fast (aka
+  local) variable storage, interpreted as a little-endian 2-byte integer.  This
+  says to load the local variable at index 0 onto the stack.
 
-- `100` is the opcode for `LOAD_CONST`.  The argument to `LOAD_CONST` is also a
-  2-byte little-endian (note that the `1` comes first!) integer, representing
-  the index into the constants tuple of the constant to load.
+- `100, 0, 0`: `100` is the opcode for `LOAD_CONST`.  The argument to
+  `LOAD_CONST` is also a 2-byte little-endian (note that the `1` comes first!)
+  integer, representing the index into the constants tuple of the constant to
+  load.  This says to load the constant at index 1 onto the stack.
 
 - `23` is the opcode for `BINARY_ADD`.  `BINARY_ADD` is always the same, so
-  there's no argument at the bytecode level.
+  there's no argument at the bytecode level.  This says to pop two values off
+  the stack, add them, and push the result back onto the stack.
 
 - `83` is the opcode for `RETURN_VALUE`.  Like `BINARY_ADD` it just operates on
   the stack, so it doesn't take a bytecode argument.
 
-That covers the bytecode.  What are the other arguments we need?
+That covers the bytecode.  What other arguments do we need?
 
 - `argcount` is the number of arguments accepted by the function. `1` for us.
-- `kwonlyargcount` is 0 because we have no keyword only arguments. `0` for us.
-- `nlocals` is the number of local variables. `1` for us.
+- `kwonlyargcount` is the number of keyword-only arguments accepted by the
+  function. `0` for us.
+- `nlocals` is the number of local variables. `1` (`x`) for us.
 - `stacksize` is the maximum number of values that will be on the stack at any
-  given time.  In our case, the maximum value is 2, right before we execute
-  `BINARY_ADD`.
+  given time.  In our case, the maximum value is 2: `x` and `1` are both on the
+  stack right before we execute `BINARY_ADD`.
 - `flags` is a 32-bit bitmask providing metadata about the function.  There are
   lots of flags:
 
@@ -189,7 +206,7 @@ That covers the bytecode.  What are the other arguments we need?
         # call frame is setup.
         CO_NOFREE = 0x0040
 
-        # The CO_COROUTINE flag is set for coroutines creates with the
+        # The CO_COROUTINE flag is set for coroutines created with the
         # types.coroutine decorator. This converts old-style coroutines into
         # python3.5 style coroutines.
         CO_COROUTINE = 0x0080
@@ -205,7 +222,7 @@ That covers the bytecode.  What are the other arguments we need?
         CO_FUTURE_BARRY_AS_BDFL = 0x40000  # Old April Fool's joke.
         CO_FUTURE_GENERATOR_STOP = 0x80000
 
-    in our case, we want to set `CO_OPTIMIZED`, and `CO_NEWLOCALS`, and
+    in our case, we want to set `CO_OPTIMIZED`, `CO_NEWLOCALS`, and
     `CO_NOFREE`, so `flags` should be `0x0001 | 0x0002 | 0x0040 = 0x0043 = 67`.
 - `codestring` is the bytecode string we just built.
 - `constants` is the constants tuple.  A standard function always has `None` as
@@ -217,8 +234,8 @@ That covers the bytecode.  What are the other arguments we need?
 - `filename` is whatever we want.  We'll use `'pycon2016.py'`.
 - `name` is `'addone'`.
 - `firstlineno` is whatever we want. We'll use `1`.
-- `lnotab` is the binary format representing a mapping from instruction index
-  to line number increment.
+- `lnotab` is a binary format representing a mapping from instruction index to
+  line number increment.
 - `freevars` is a tuple containing names of variables that we're closing over.
   In this case it's just `()`.
 - `cellvars` is a tuple containing names of variables that are closed over by
@@ -232,9 +249,9 @@ Putting them all together we have this:
         0,                                     # kwonlyargcount
         1,                                     # nlocals
         2,                                     # stacksize
-        67,                                    # flags
-        bytes([124, 0, 0, 100, 1, 0, 23, 83]), # codestring
-        (None, 1),                             # constants
+        (0x0001 | 0x0002 | 0x0040),            # flags
+        bytes([124, 0, 0, 100, 0, 0, 23, 83]), # codestring
+        (1,),                                  # constants
         (),                                    # names
         ('x',),                                # varnames
         'pycon2016.py',                        # filename
@@ -249,13 +266,20 @@ Huzzah! Let's verify that this worked:
 
     >>> dis.dis(code)
       2           0 LOAD_FAST                0 (x)
-                  3 LOAD_CONST               1 (1)
+                  3 LOAD_CONST               0 (1)
                   6 BINARY_ADD
                   7 RETURN_VALUE
 
+Compare to code generated by Python.  Note that we're actually better because
+we didn't add `None` unnecessarily.
+
 Building a Function Object from Code
 ------------------------------------
-(2 minutes)
+(2 minutes, running total=22)
+
+Great! Let's call our code object:
+
+    Dismal Failure
 
 Now that we've got a `code` object, how do we turn that into a proper function?
 
@@ -280,18 +304,18 @@ This is, thankfully, much simpler than `CodeType`.
 
 Modifying Existing Code Objects
 -------------------------------
-(5 minutes)
+(3 minutes; running total=25)
 
 It's not often that we want to construct a function (or module, or class) from
 whole cloth. Python is already a pretty good language for generating bytecode.
 
 What if we realized we actually wanted to add two instead of one?
 
-    In [9]: addone.__code__.co_consts = (None, 2)
+    In [9]: addone.__code__.co_consts = (2,)
     ---------------------------------------------------------------------------
     AttributeError                            Traceback (most recent call last)
     <ipython-input-9-b34300c5889a> in <module>()
-    ----> 1 addone.__code__.co_consts = (None, 2)
+    ----> 1 addone.__code__.co_consts = (2,)
 
     AttributeError: readonly attribute
 
@@ -324,10 +348,161 @@ its attributes except the ones we want to replace, and create a new code object.
             newcode, f.__globals__, f.__name__, f.__defaults__, f.__closure__,
         )
 
-    In [1]: addtwo = update_code(addone, co_consts=(None, 2))
+    In [1]: addtwo = update_code(addone, co_consts=(2,))
 
-    In [2]: addtwo(1)
-    Out[2]: 3
+    In [2]: addtwo(3)
+    Out[2]: 5
 
 Updating the Bytecode
 ---------------------
+(5 minutes; running total=30)
+
+Updating the constants tuple is all well and good, but the real fun starts when
+we update the **bytecode itself**.
+
+    BINARY_ADD_OPCODE = 23
+    BINARY_MULTIPLY_OPCODE = 20
+
+    def add_to_mul(f):
+        """
+        Decorator that converts addition to multiplication.
+        """
+        instructions = list(f.__code__.co_code)
+        new_instructions = []
+        for instr in instructions:
+            if instr == BINARY_ADD_OPCODE:
+                new_instructions.append(BINARY_MULTIPLY_OPCODE)
+            else:
+                new_instructions.append(instr)
+        return update_code(f, co_code=bytes(new_instructions))
+
+Issues With Our Implementation
+------------------------------
+(2 minutes; running total=32)
+
+    from string import ascii_lowercase
+
+    def get_x(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z):
+        return x
+
+    get_x(*ascii_lowercase)  # returns 'x'
+    get_x_improved = add_to_mul(get_x)
+    get_x_improved(*ascii_lowercase) # returns 'u'
+
+    In [11]: dis.dis(get_x)
+      2           0 LOAD_FAST               23 (x)
+                  3 RETURN_VALUE
+
+    In [12]: dis.dis(add_to_mul(get_x))
+      2           0 LOAD_FAST               20 (u)
+                  3 RETURN_VALUE
+
+Other Challenges
+----------------
+(3 minutes; running total=35)
+
+**Adding and Removing Instructions:**
+(2 minutes)
+
+The big challenge here is resolving jumps properly.
+
+- If there's an absolute jump anywhere in the code, then it will break if I
+  change the number of instructions before the jump target.
+
+- If there's a relative jump, it will break if we change the instructions
+  between the jump and its target.
+
+Messing up jumps generally causes Python to segfault.  (Demo Example)
+
+**Keeping Track of the Stack Size:**
+(1 minute)
+
+One of the pieces of data on the code object is "what's the maximum size of the
+stack?".  Once you start manipulating the bytecode manually, it's very easy to
+mess this up.
+
+Messing up the stack size causes python to write to uninitialized memory.  This
+is bad.
+
+Demo of `codetransformer`
+-------------------------
+(5 minutes; running total=40)
+
+In this section we go through a few examples of transformers that we've
+written. The goal here is to provide a payoff for the audience having learned
+all the material from the prior sections.  The hope is that by this point the
+audience has all the knowledge they would need to write a proper library to do
+bytecode manipulation themselves, so we can talk about some of the neat things
+we've been able to do with such a library.
+
+As we worked on these problems, we wanted a higher level abstraction for doing
+terrible terrible hacks.  The result of that work is our `codetransformer`
+library, which provides an API for writing your own transformers.
+
+Core abstraction is to provide `Code`, `Instruction`, and `CodeTransformer`
+classes for working with code without having to do low-level bit fiddling.
+
+It's easy to convert to and from Python and `codetransformer` code objects.
+
+(2 minutes)
+**`ordereddict_literals`**
+
+    from codetransformer.transformers.literals import ordereddict_literals
+
+    @ordereddict_literals
+    def ayy(a, b, c):
+        return {'a': a, 'b': b, 'c': c}
+
+    In [1]: ayy(1, 2, 3)
+    Out[1]: OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+
+(2 minutes)
+**`inline_compose`**
+
+A common tool in functional programming is `compose`, which is a function that
+takes multiple functions and pipes an input through all of them.
+
+Example:
+
+    def addone(a):
+        return a + 1
+
+    def timestwo(a):
+        return a * 2
+
+    In [1]: compose(addone, timestwo)(3)
+    Out[1]: 7
+
+    In [2]: compose(timestwo, addone)(3)
+    Out[2]: 8
+
+Under the hood, a standard implementation works by looping over each function,
+calling it on the input, and passing the output on to the next function.
+
+We can use `codetransformer.compose` to stitch together the functions directly
+in bytecode.  This is substantially faster if you call the composed function in
+a tight loop.
+
+(Show Disassembly of `codetransformer.compose(addone, timestwo)`.)
+(Show Slide of Timings)
+
+**List of Other Transformers and Features**
+(1 minute)
+
+Transformers:
+- `@implicit_self`
+- `@islice_literals`
+- `@pattern_matched_exceptions`
+- `@asconstants`
+- `@mutable_locals`
+
+Other Features:
+- Bytecode-to-AST Decompiler
+- AST/Bytecode Pretty Printers
+- Pattern Matching API for Bytecode Blocks
+- Constant Deduplication
+- Flag and Line Number Table Classes
+
+Time for Questions
+------------------
+(5 minutes; running total=45)
