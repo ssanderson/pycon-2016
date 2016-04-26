@@ -17,6 +17,8 @@ else
     pip install -e ./codetransformer
 
     export JUPYTER_CONFIG_DIR=$config_dir
+    export PYTHONPATH=../snippets
+    export BROWSER=google-chrome
     jupyter nbextension install RISE/livereveal --symlink --nbextensions $config_dir/nbextensions
     jupyter nbextension enable livereveal/main
     jupyter notebook notebooks
