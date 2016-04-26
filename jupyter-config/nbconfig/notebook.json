@@ -1,7 +1,7 @@
 {
   "load_extensions": {
     "livereveal/main": true,
-    "RISE/livereveal": true,
-    "livereveal": true
+    "livereveal": true,
+    "RISE/livereveal": true
   }
 }
